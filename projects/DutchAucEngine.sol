@@ -24,6 +24,7 @@ contract DutchAucEngine {
     Auction[] public auctions;
 
     event AuctionCreated(uint indexed index, string itemDescription, uint indexed startingPrice, uint duration);
+    event AuctionEnded(uint indexed, uint finalPrice, address winner);
 
     constructor() {
         owner = msg.sender;
@@ -40,7 +41,7 @@ contract DutchAucEngine {
             duration = _duration;
         }
 
-        require(_startingPrice >= _discountRate * duration, "Incorrect starting price");
+        require(_startingPrice >= _discountRate * duration, "Incorrect starting price.");
 
         Auction memory newAuction = Auction(
             {
@@ -62,10 +63,11 @@ contract DutchAucEngine {
 
     }
 
+
     function getPriceFor(uint index) public view returns(uint) {
         Auction memory currentAuction = auctions[index];
 
-        require(!currentAuction.stopped, "Auction is stopped");
+        require(!currentAuction.stopped, "Auction is stopped.");
 
         uint elapsed = block.timestamp - currentAuction.startAt;
         uint discount = currentAuction.discountRate * elapsed;
@@ -74,5 +76,30 @@ contract DutchAucEngine {
 
     }
 
+
+    function buy(uint index) external payable {
+        Auction memory currentAuction = auctions[index];
+
+        require(!currentAuction.stopped, "Auction is stopped.");
+        require(block.timestamp < currentAuction.endsAt, "Time is over.");
+
+        uint currentPrice = getPriceFor(index);
+
+        require(msg.value >= currentPrice, "Not enough funds!");
+
+        currentAuction.stopped = true;
+        currentAuction.finalPrice = currentPrice;
+
+        uint refund = msg.value - currentPrice;
+
+        if(refund > 0) {
+            payable(msg.sender).transfer(refund);
+        }
+
+        currentAuction.seller.transfer(currentPrice - ((currentPrice * FEE) / 100));
+
+        emit AuctionEnded(index, currentPrice, msg.sender);
+
+    }
 
 }
