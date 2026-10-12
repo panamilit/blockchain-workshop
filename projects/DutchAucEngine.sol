@@ -62,7 +62,17 @@ contract DutchAucEngine {
 
     }
 
-        
+    function getPriceFor(uint index) public view returns(uint) {
+        Auction memory currentAuction = auctions[index];
+
+        require(!currentAuction.stopped, "Auction is stopped");
+
+        uint elapsed = block.timestamp - currentAuction.startAt;
+        uint discount = currentAuction.discountRate * elapsed;
+
+        return currentAuction.startingPrice - discount;
+
+    }
 
 
 }
